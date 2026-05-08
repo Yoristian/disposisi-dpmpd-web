@@ -45,9 +45,7 @@ const Login = ({ onLogin }) => {
       
       <div className="sm:mx-auto sm:w-full sm:max-w-md flex flex-col items-center mb-8 animate-fadeIn relative z-10">
         <div className="w-16 h-16 mb-6 flex items-center justify-center bg-white rounded-2xl shadow-lg shadow-purple-100/50 border border-white p-2">
-            <span className="font-extrabold text-transparent bg-clip-text bg-gradient-to-tr from-purple-600 to-indigo-600 text-xl tracking-wider">
-              D
-            </span>
+            <img src="logo.png" alt="" />
         </div>
         <h2 className="text-center text-3xl font-bold tracking-tight text-gray-900">Login Sistem</h2>
         <p className="mt-2 text-center text-sm text-gray-500 font-medium px-4">E-Disposisi DPMPD</p>
