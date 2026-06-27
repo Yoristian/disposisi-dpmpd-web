@@ -1,30 +1,66 @@
-import React from 'react';
-import { AlertCircle, Clock, CheckCircle, XCircle, MoreVertical } from 'lucide-react';
+import React, { useState } from 'react';
+import { AlertCircle, Clock, CheckCircle, XCircle, Filter, X } from 'lucide-react';
 import { 
   PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, 
   CartesianGrid, Tooltip, ResponsiveContainer, Legend 
 } from 'recharts';
 
 const Dashboard = ({ dataSurat, handleDashboardCardClick }) => {
-  const countDiajukan = dataSurat.filter(s => s.status_alur === 'Diajukan').length;
-  const countDiproses = dataSurat.filter(s => s.status_alur === 'Diproses').length;
-  const countDisetujui = dataSurat.filter(s => s.status_alur === 'Disetujui').length;
-  const countDikembalikan = dataSurat.filter(s => s.status_alur === 'Dikembalikan').length;
+  // 1. STATE UNTUK FILTER TANGGAL & JENIS
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
+  const [jenisFilter, setJenisFilter] = useState('Semua'); // 'Semua', 'Masuk', 'Keluar'
 
-  // Standar Warna Status
+  // 2. FUNGSI FILTER DATA TERPADU
+  const filteredData = dataSurat.filter(surat => {
+    // A. Filter Tanggal
+    const dateToCompare = surat.tgl_surat || surat.created_at;
+    let isAfterStart = true;
+    let isBeforeEnd = true;
+
+    if (dateToCompare) {
+      const d = new Date(dateToCompare);
+      d.setHours(0, 0, 0, 0);
+
+      if (startDate) {
+        const start = new Date(startDate);
+        start.setHours(0, 0, 0, 0);
+        isAfterStart = d >= start;
+      }
+
+      if (endDate) {
+        const end = new Date(endDate);
+        end.setHours(23, 59, 59, 999);
+        isBeforeEnd = d <= end;
+      }
+    }
+
+    // B. Filter Jenis Surat
+    const isJenisMatch = jenisFilter === 'Semua' || surat.jenis_surat === jenisFilter;
+
+    // Data lolos jika memenuhi kedua kriteria (Tanggal & Jenis)
+    return isAfterStart && isBeforeEnd && isJenisMatch;
+  });
+
+  // 3. KALKULASI DATA DARI filteredData
+  const countDiajukan = filteredData.filter(s => s.status_alur === 'Diajukan').length;
+  const countDiproses = filteredData.filter(s => s.status_alur === 'Diproses').length;
+  const countDisetujui = filteredData.filter(s => s.status_alur === 'Disetujui').length;
+  const countDikembalikan = filteredData.filter(s => s.status_alur === 'Dikembalikan').length;
+
   const statusChartData = [
-    { name: 'Diajukan', value: countDiajukan, color: '#9333ea' },     // purple-600
-    { name: 'Diproses', value: countDiproses, color: '#4f46e5' },     // indigo-600
-    { name: 'Disetujui', value: countDisetujui, color: '#059669' },    // emerald-600
-    { name: 'Dikembalikan', value: countDikembalikan, color: '#e11d48' } // rose-600
+    { name: 'Diajukan', value: countDiajukan, color: '#9333ea' },
+    { name: 'Diproses', value: countDiproses, color: '#4f46e5' },
+    { name: 'Disetujui', value: countDisetujui, color: '#059669' },
+    { name: 'Dikembalikan', value: countDikembalikan, color: '#e11d48' }
   ].filter(item => item.value > 0);
 
-  const countMasuk = dataSurat.filter(s => s.jenis_surat === 'Masuk').length;
-  const countKeluar = dataSurat.filter(s => s.jenis_surat === 'Keluar').length;
+  const countMasuk = filteredData.filter(s => s.jenis_surat === 'Masuk').length;
+  const countKeluar = filteredData.filter(s => s.jenis_surat === 'Keluar').length;
   
   const jenisChartData = [
-    { name: 'Masuk', jumlah: countMasuk, fill: '#9333ea' },  // purple-600
-    { name: 'Keluar', jumlah: countKeluar, fill: '#c084fc' } // purple-400
+    { name: 'Masuk', jumlah: countMasuk, fill: '#9333ea' },
+    { name: 'Keluar', jumlah: countKeluar, fill: '#c084fc' }
   ];
 
   const StatCard = ({ title, count, icon, onClick, colorClass, bgLightClass, shadowHoverClass }) => (
@@ -57,27 +93,79 @@ const Dashboard = ({ dataSurat, handleDashboardCardClick }) => {
 
   return (
     <div className="animate-fadeIn">
-      <h1 className="text-2xl font-bold text-gray-900 mb-8 tracking-tight">Overview</h1>
+      {/* HEADER & FILTER SECTION */}
+      <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center mb-8 gap-4">
+        <h1 className="text-2xl font-bold text-gray-900 tracking-tight">Overview</h1>
+        
+        <div className="flex items-center bg-white p-1.5 rounded-2xl border border-gray-200 shadow-sm w-full xl:w-auto overflow-x-auto">
+          <div className="pl-3 pr-2 text-gray-400 hidden sm:block">
+            <Filter size={18} />
+          </div>
+
+          {/* Filter Jenis Surat */}
+          <div className="flex items-center bg-gray-50 rounded-xl px-3 py-2 border border-gray-100 mr-2 flex-shrink-0">
+            <select 
+              value={jenisFilter}
+              onChange={(e) => setJenisFilter(e.target.value)}
+              className="text-sm bg-transparent border-none focus:ring-0 text-gray-700 outline-none w-full cursor-pointer font-medium"
+            >
+              <option value="Semua">Semua Surat</option>
+              <option value="Masuk">Surat Masuk</option>
+              <option value="Keluar">Surat Keluar</option>
+            </select>
+          </div>
+
+          {/* Filter Tanggal */}
+          <div className="flex items-center bg-gray-50 rounded-xl px-3 py-2 border border-gray-100 flex-shrink-0">
+            <input 
+              type="date" 
+              value={startDate}
+              onChange={(e) => setStartDate(e.target.value)}
+              className="text-sm bg-transparent border-none focus:ring-0 text-gray-700 outline-none w-auto cursor-pointer"
+            />
+            <span className="mx-2 text-gray-400 text-sm">ke</span>
+            <input 
+              type="date" 
+              value={endDate}
+              onChange={(e) => setEndDate(e.target.value)}
+              className="text-sm bg-transparent border-none focus:ring-0 text-gray-700 outline-none w-auto cursor-pointer"
+            />
+          </div>
+          
+          {/* Tombol Reset Filter */}
+          {(startDate || endDate || jenisFilter !== 'Semua') && (
+            <button 
+              onClick={() => { setStartDate(''); setEndDate(''); setJenisFilter('Semua'); }}
+              className="ml-2 p-2 text-gray-400 hover:text-rose-500 hover:bg-rose-50 rounded-xl transition-colors flex-shrink-0"
+              title="Reset Filter"
+            >
+              <X size={18} />
+            </button>
+          )}
+        </div>
+      </div>
       
+      {/* KARTU STATISTIK (Mem-passing jenisFilter ke handler) */}
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 mb-8">
         <StatCard 
-          title="Diajukan" count={countDiajukan} onClick={() => handleDashboardCardClick('Diajukan')} 
+          title="Diajukan" count={countDiajukan} onClick={() => handleDashboardCardClick('Diajukan', jenisFilter)} 
           icon={<AlertCircle size={28} />} colorClass="text-purple-600" bgLightClass="bg-purple-50" shadowHoverClass="hover:shadow-purple-100/50 hover:border-purple-200"
         />
         <StatCard 
-          title="Diproses" count={countDiproses} onClick={() => handleDashboardCardClick('Diproses')} 
+          title="Diproses" count={countDiproses} onClick={() => handleDashboardCardClick('Diproses', jenisFilter)} 
           icon={<Clock size={28} />} colorClass="text-indigo-600" bgLightClass="bg-indigo-50" shadowHoverClass="hover:shadow-indigo-100/50 hover:border-indigo-200"
         />
         <StatCard 
-          title="Disetujui" count={countDisetujui} onClick={() => handleDashboardCardClick('Disetujui')} 
+          title="Disetujui" count={countDisetujui} onClick={() => handleDashboardCardClick('Disetujui', jenisFilter)} 
           icon={<CheckCircle size={28} />} colorClass="text-emerald-600" bgLightClass="bg-emerald-50" shadowHoverClass="hover:shadow-emerald-100/50 hover:border-emerald-200"
         />
         <StatCard 
-          title="Dikembalikan" count={countDikembalikan} onClick={() => handleDashboardCardClick('Dikembalikan')} 
+          title="Dikembalikan" count={countDikembalikan} onClick={() => handleDashboardCardClick('Dikembalikan', jenisFilter)} 
           icon={<XCircle size={28} />} colorClass="text-rose-600" bgLightClass="bg-rose-50" shadowHoverClass="hover:shadow-rose-100/50 hover:border-rose-200"
         />
       </div>
 
+      {/* CHART SECTION */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div className="bg-white rounded-[2rem] p-8 border border-gray-100 shadow-sm flex flex-col">
           <div className="mb-6">
@@ -86,7 +174,7 @@ const Dashboard = ({ dataSurat, handleDashboardCardClick }) => {
           </div>
           
           <div className="flex-1 min-h-[280px] relative">
-            {dataSurat.length > 0 ? (
+            {filteredData.length > 0 ? (
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
                   <Pie data={statusChartData} cx="50%" cy="50%" innerRadius={70} outerRadius={110} paddingAngle={5} dataKey="value" stroke="none">
@@ -96,7 +184,7 @@ const Dashboard = ({ dataSurat, handleDashboardCardClick }) => {
                   <Legend iconType="circle" wrapperStyle={{ fontSize: '14px', paddingTop: '20px' }} />
                 </PieChart>
               </ResponsiveContainer>
-            ) : <div className="absolute inset-0 flex items-center justify-center text-gray-400 text-sm">Data kosong.</div>}
+            ) : <div className="absolute inset-0 flex items-center justify-center text-gray-400 text-sm">Tidak ada data untuk filter ini.</div>}
           </div>
         </div>
 
@@ -107,7 +195,7 @@ const Dashboard = ({ dataSurat, handleDashboardCardClick }) => {
           </div>
 
           <div className="flex-1 min-h-[280px] relative mt-4">
-            {dataSurat.length > 0 ? (
+            {filteredData.length > 0 ? (
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={jenisChartData} barSize={60}>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
@@ -119,7 +207,7 @@ const Dashboard = ({ dataSurat, handleDashboardCardClick }) => {
                   </Bar>
                 </BarChart>
               </ResponsiveContainer>
-            ) : <div className="absolute inset-0 flex items-center justify-center text-gray-400 text-sm">Data kosong.</div>}
+            ) : <div className="absolute inset-0 flex items-center justify-center text-gray-400 text-sm">Tidak ada data untuk filter ini.</div>}
           </div>
         </div>
       </div>
